@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyTube</title>
+<title>TamilPadam</title>
 
 <!-- Firebase CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -20,6 +20,13 @@ header{
   background:#202020;
   padding:12px;
   font-size:20px;
+}
+.search{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  border:none;
+  outline:none;
 }
 .container{
   padding:15px;
@@ -52,12 +59,26 @@ header{
   align-items:center;
 }
 .player video{width:95%;max-width:800px}
-.close{position:absolute;top:10px;right:15px;font-size:22px;cursor:pointer}
+.close{
+  position:absolute;
+  top:10px;
+  right:15px;
+  font-size:22px;
+  cursor:pointer
+}
 </style>
 </head>
 <body>
 
-<header>MyTube 🎬</header>
+<header>TamilPadam 🎬</header>
+
+<!-- 🔍 Search Bar -->
+<input
+  class="search"
+  id="search"
+  placeholder="Search videos..."
+  oninput="filterVideos()"
+/>
 
 <div class="container" id="videoList"></div>
 
@@ -67,7 +88,7 @@ header{
 </div>
 
 <script>
-  // 🔥 Firebase Config (SAME AS ADMIN)
+  // 🔥 Firebase Config
   const firebaseConfig = {
     apiKey: "AIzaSyDJ3w0sw73diwA9t-yMeQYZrq9AtflNwLw",
     authDomain: "tamilpadam-880da.firebaseapp.com",
@@ -81,19 +102,35 @@ header{
   const db = firebase.firestore();
 
   const list = document.getElementById('videoList');
+  let allVideos = [];
 
   // Load videos realtime
   db.collection('videos').orderBy('time','desc').onSnapshot(snapshot => {
-    list.innerHTML = '';
+    allVideos = [];
     snapshot.forEach(doc => {
-      const v = doc.data();
+      allVideos.push(doc.data());
+    });
+    renderVideos(allVideos);
+  });
+
+  function renderVideos(videos){
+    list.innerHTML = '';
+    videos.forEach(v => {
       list.innerHTML += `
         <div class="card" onclick="playVideo('${v.url}')">
           <video src="${v.url}" muted></video>
           <div class="title">${v.title}</div>
         </div>`;
     });
-  });
+  }
+
+  function filterVideos(){
+    const q = document.getElementById('search').value.toLowerCase();
+    const filtered = allVideos.filter(v =>
+      v.title.toLowerCase().includes(q)
+    );
+    renderVideos(filtered);
+  }
 
   function playVideo(url){
     const player = document.getElementById('player');
