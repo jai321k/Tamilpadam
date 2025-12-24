@@ -5,147 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TamilPadam</title>
 
-<!-- Firebase CDN -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
+:root{
+  --bg:#0b0e14;
+  --card:#141824;
+  --accent:#4f8cff;
+  --text:#eaeaff;
+  --sub:#9aa4c7;
+}
+
+/* Base */
+*{box-sizing:border-box}
 body{
   margin:0;
-  background:#0f0f0f;
-  color:white;
-  font-family:Arial;
+  background:
+    radial-gradient(circle at top,#1a2140,#0b0e14 60%);
+  font-family:Inter,Segoe UI,Arial;
+  color:var(--text);
 }
+
+/* Header */
 header{
-  background:#202020;
-  padding:12px;
-  font-size:20px;
+  padding:18px 20px;
+  font-size:22px;
+  font-weight:600;
+  background:linear-gradient(90deg,#1a2140,#0b0e14);
+  border-bottom:1px solid #1f2645;
 }
+
+/* Search */
 .search{
   width:100%;
-  padding:10px;
-  font-size:16px;
+  padding:14px 16px;
+  font-size:15px;
+  background:#0f1424;
   border:none;
   outline:none;
+  color:white;
+  border-bottom:1px solid #1f2645;
 }
+
+/* Grid */
 .container{
-  padding:15px;
+  padding:22px;
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:15px;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:22px;
 }
+
+/* Card */
 .card{
-  background:#1f1f1f;
-  border-radius:10px;
+  background:linear-gradient(180deg,#171c33,#0f1424);
+  border-radius:16px;
   overflow:hidden;
   cursor:pointer;
+  transition:0.35s ease;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
 }
+.card:hover{
+  transform:translateY(-6px) scale(1.04);
+  box-shadow:0 20px 50px rgba(79,140,255,0.25);
+}
+
+/* Thumbnail */
 .card video{
   width:100%;
-  height:120px;
+  height:130px;
   object-fit:cover;
+  filter:contrast(1.05) saturate(1.1);
 }
+
+/* Title */
 .title{
-  padding:8px;
-  font-size:14px;
+  padding:12px;
+  font-size:15px;
+  font-weight:500;
+  color:var(--text);
 }
+
+/* Player */
 .player{
   display:none;
   position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
-  background:black;
+  inset:0;
+  background:rgba(5,8,20,0.96);
+  backdrop-filter:blur(8px);
   justify-content:center;
   align-items:center;
+  animation:fadeIn 0.4s ease;
 }
-.player video{width:95%;max-width:800px}
+.player video{
+  width:92%;
+  max-width:950px;
+  border-radius:18px;
+  box-shadow:0 0 60px rgba(0,0,0,0.8);
+}
+
+/* Close */
 .close{
   position:absolute;
-  top:10px;
-  right:15px;
-  font-size:22px;
-  cursor:pointer
+  top:18px;
+  right:22px;
+  font-size:26px;
+  color:#fff;
+  cursor:pointer;
+}
+
+/* Skeleton */
+.skeleton{
+  height:180px;
+  border-radius:16px;
+  background:linear-gradient(90deg,#141824,#1d2444,#141824);
+  animation:shimmer 1.3s infinite;
+}
+
+/* Animations */
+@keyframes fadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes shimmer{
+  0%{background-position:-200px}
+  100%{background-position:200px}
 }
 </style>
 </head>
+
 <body>
 
-<header>TamilPadam 🎬</header>
+<header>TamilPadam</header>
 
-<!-- 🔍 Search Bar -->
-<input
-  class="search"
-  id="search"
-  placeholder="Search videos..."
-  oninput="filterVideos()"
-/>
+<input class="search" id="search" placeholder="Search movies, shows, videos…" oninput="filterVideos()">
 
 <div class="container" id="videoList"></div>
 
 <div class="player" id="player">
-  <span class="close" onclick="closePlayer()">✖</span>
+  <span class="close" onclick="closePlayer()">✕</span>
   <video id="mainVideo" controls autoplay></video>
 </div>
 
 <script>
-  // 🔥 Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyDJ3w0sw73diwA9t-yMeQYZrq9AtflNwLw",
-    authDomain: "tamilpadam-880da.firebaseapp.com",
-    projectId: "tamilpadam-880da",
-    storageBucket: "tamilpadam-880da.firebasestorage.app",
-    messagingSenderId: "231920667182",
-    appId: "1:231920667182:web:04ccd363eefeae32a1edbf"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDJ3w0sw73diwA9t-yMeQYZrq9AtflNwLw",
+  authDomain: "tamilpadam-880da.firebaseapp.com",
+  projectId: "tamilpadam-880da",
+  storageBucket: "tamilpadam-880da.firebasestorage.app",
+  messagingSenderId: "231920667182",
+  appId: "1:231920667182:web:04ccd363eefeae32a1edbf"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+const list=document.getElementById("videoList");
+let allVideos=[];
 
-  const list = document.getElementById('videoList');
-  let allVideos = [];
+/* Skeleton loading */
+for(let i=0;i<6;i++){
+  list.innerHTML+=`<div class="skeleton"></div>`;
+}
 
-  // Load videos realtime
-  db.collection('videos').orderBy('time','desc').onSnapshot(snapshot => {
-    allVideos = [];
-    snapshot.forEach(doc => {
-      allVideos.push(doc.data());
-    });
-    renderVideos(allVideos);
+db.collection("videos").orderBy("time","desc").onSnapshot(snap=>{
+  allVideos=[];
+  snap.forEach(doc=>allVideos.push(doc.data()));
+  renderVideos(allVideos);
+});
+
+function renderVideos(videos){
+  list.innerHTML="";
+  videos.forEach(v=>{
+    list.innerHTML+=`
+      <div class="card" onclick="playVideo('${v.url}')">
+        <video src="${v.url}" muted></video>
+        <div class="title">${v.title}</div>
+      </div>`;
   });
+}
 
-  function renderVideos(videos){
-    list.innerHTML = '';
-    videos.forEach(v => {
-      list.innerHTML += `
-        <div class="card" onclick="playVideo('${v.url}')">
-          <video src="${v.url}" muted></video>
-          <div class="title">${v.title}</div>
-        </div>`;
-    });
-  }
+function filterVideos(){
+  const q=document.getElementById("search").value.toLowerCase();
+  renderVideos(allVideos.filter(v=>v.title.toLowerCase().includes(q)));
+}
 
-  function filterVideos(){
-    const q = document.getElementById('search').value.toLowerCase();
-    const filtered = allVideos.filter(v =>
-      v.title.toLowerCase().includes(q)
-    );
-    renderVideos(filtered);
-  }
-
-  function playVideo(url){
-    const player = document.getElementById('player');
-    const video = document.getElementById('mainVideo');
-    video.src = url;
-    player.style.display = 'flex';
-  }
-
-  function closePlayer(){
-    const player = document.getElementById('player');
-    const video = document.getElementById('mainVideo');
-    video.pause();
-    video.src = '';
-    player.style.display = 'none';
-  }
+function playVideo(url){
+  const p=document.getElementById("player");
+  const v=document.getElementById("mainVideo");
+  v.src=url;
+  p.style.display="flex";
+}
+function closePlayer(){
+  const v=document.getElementById("mainVideo");
+  v.pause();v.src="";
+  document.getElementById("player").style.display="none";
+}
 </script>
 
 </body>
