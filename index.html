@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TamilPadam</title>
+<title>College Kathaigal</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -15,15 +15,12 @@
   --card:#141824;
   --accent:#4f8cff;
   --text:#eaeaff;
-  --sub:#9aa4c7;
 }
 
-/* Base */
 *{box-sizing:border-box}
 body{
   margin:0;
-  background:
-    radial-gradient(circle at top,#1a2140,#0b0e14 60%);
+  background:radial-gradient(circle at top,#1a2140,#0b0e14 60%);
   font-family:Inter,Segoe UI,Arial;
   color:var(--text);
 }
@@ -35,6 +32,28 @@ header{
   font-weight:600;
   background:linear-gradient(90deg,#1a2140,#0b0e14);
   border-bottom:1px solid #1f2645;
+}
+
+/* Category Menu */
+.menu{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding:12px;
+  background:#0f1424;
+  border-bottom:1px solid #1f2645;
+}
+.menu button{
+  background:#141824;
+  color:#fff;
+  border:none;
+  padding:8px 14px;
+  border-radius:20px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.menu button.active{
+  background:var(--accent);
 }
 
 /* Search */
@@ -64,27 +83,18 @@ header{
   overflow:hidden;
   cursor:pointer;
   transition:0.35s ease;
-  box-shadow:0 10px 30px rgba(0,0,0,0.5);
 }
 .card:hover{
   transform:translateY(-6px) scale(1.04);
-  box-shadow:0 20px 50px rgba(79,140,255,0.25);
 }
-
-/* Thumbnail */
 .card video{
   width:100%;
   height:130px;
   object-fit:cover;
-  filter:contrast(1.05) saturate(1.1);
 }
-
-/* Title */
 .title{
   padding:12px;
   font-size:15px;
-  font-weight:500;
-  color:var(--text);
 }
 
 /* Player */
@@ -93,25 +103,19 @@ header{
   position:fixed;
   inset:0;
   background:rgba(5,8,20,0.96);
-  backdrop-filter:blur(8px);
   justify-content:center;
   align-items:center;
-  animation:fadeIn 0.4s ease;
 }
 .player video{
   width:92%;
   max-width:950px;
   border-radius:18px;
-  box-shadow:0 0 60px rgba(0,0,0,0.8);
 }
-
-/* Close */
 .close{
   position:absolute;
   top:18px;
   right:22px;
   font-size:26px;
-  color:#fff;
   cursor:pointer;
 }
 
@@ -122,12 +126,6 @@ header{
   background:linear-gradient(90deg,#141824,#1d2444,#141824);
   animation:shimmer 1.3s infinite;
 }
-
-/* Animations */
-@keyframes fadeIn{
-  from{opacity:0}
-  to{opacity:1}
-}
 @keyframes shimmer{
   0%{background-position:-200px}
   100%{background-position:200px}
@@ -137,9 +135,14 @@ header{
 
 <body>
 
-<header>TamilPadam</header>
+<header>College Kathaigal</header>
 
-<input class="search" id="search" placeholder="Search movies, shows, videos…" oninput="filterVideos()">
+<!-- CATEGORY MENU -->
+<div class="menu" id="categoryMenu"></div>
+
+<input class="search" id="search"
+placeholder="Search by title or tag… ( Tools, 18+, vlogs)"
+oninput="applyFilters()">
 
 <div class="container" id="videoList"></div>
 
@@ -152,54 +155,84 @@ header{
 const firebaseConfig = {
   apiKey: "AIzaSyDJ3w0sw73diwA9t-yMeQYZrq9AtflNwLw",
   authDomain: "tamilpadam-880da.firebaseapp.com",
-  projectId: "tamilpadam-880da",
-  storageBucket: "tamilpadam-880da.firebasestorage.app",
-  messagingSenderId: "231920667182",
-  appId: "1:231920667182:web:04ccd363eefeae32a1edbf"
+  projectId: "tamilpadam-880da"
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 
 const list=document.getElementById("videoList");
-let allVideos=[];
+const menu=document.getElementById("categoryMenu");
 
-/* Skeleton loading */
-for(let i=0;i<6;i++){
-  list.innerHTML+=`<div class="skeleton"></div>`;
-}
+let allVideos=[];
+let activeCategory="All";
+
+/* Skeleton */
+for(let i=0;i<6;i++) list.innerHTML+=`<div class="skeleton"></div>`;
 
 db.collection("videos").orderBy("time","desc").onSnapshot(snap=>{
   allVideos=[];
-  snap.forEach(doc=>allVideos.push(doc.data()));
-  renderVideos(allVideos);
+  const categories=new Set();
+  snap.forEach(doc=>{
+    const v=doc.data();
+    allVideos.push(v);
+    if(v.category) categories.add(v.category);
+  });
+  buildMenu([...categories]);
+  applyFilters();
 });
 
+/* Build Menu */
+function buildMenu(cats){
+  menu.innerHTML=`<button class="active" onclick="setCategory('All',this)">All</button>`;
+  cats.forEach(c=>{
+    menu.innerHTML+=`<button onclick="setCategory('${c}',this)">${c}</button>`;
+  });
+}
+
+function setCategory(cat,btn){
+  activeCategory=cat;
+  document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  applyFilters();
+}
+
+/* Render */
 function renderVideos(videos){
   list.innerHTML="";
   videos.forEach(v=>{
     list.innerHTML+=`
-      <div class="card" onclick="playVideo('${v.url}')">
-        <video src="${v.url}" muted></video>
-        <div class="title">${v.title}</div>
-      </div>`;
+    <div class="card" onclick="playVideo('${v.url}')">
+      <video src="${v.url}" muted></video>
+      <div class="title">${v.title}</div>
+    </div>`;
   });
 }
 
-function filterVideos(){
+/* 🔍 SEARCH: TITLE + TAG */
+function applyFilters(){
   const q=document.getElementById("search").value.toLowerCase();
-  renderVideos(allVideos.filter(v=>v.title.toLowerCase().includes(q)));
+
+  let filtered = allVideos.filter(v=>{
+    const titleMatch = v.title.toLowerCase().includes(q);
+    const tagMatch = (v.tags || []).join(" ").toLowerCase().includes(q);
+    return titleMatch || tagMatch;
+  });
+
+  if(activeCategory!=="All"){
+    filtered = filtered.filter(v=>v.category===activeCategory);
+  }
+  renderVideos(filtered);
 }
 
+/* Player */
 function playVideo(url){
-  const p=document.getElementById("player");
-  const v=document.getElementById("mainVideo");
-  v.src=url;
-  p.style.display="flex";
+  mainVideo.src=url;
+  player.style.display="flex";
 }
 function closePlayer(){
-  const v=document.getElementById("mainVideo");
-  v.pause();v.src="";
-  document.getElementById("player").style.display="none";
+  mainVideo.pause();
+  mainVideo.src="";
+  player.style.display="none";
 }
 </script>
 
